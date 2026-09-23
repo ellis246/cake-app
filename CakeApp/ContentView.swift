@@ -18,9 +18,17 @@ struct ContentView: View {
         .padding()
         .task {
             do {
-                print("Start")
-                let (data, response) = try await URLSession.shared.data(for: URLRequest(url: URL(string: "https://raw.githubusercontent.com/Waracle/mobile-coding-test-api/refs/heads/main/cakes")!))
-                print(try JSONDecoder().decode([Cake].self, from: data))
+                guard let url = URL(string: "https://raw.githubusercontent.com/Waracle/mobile-coding-test-api/refs/heads/main/cakes") else {
+                    fatalError("Unable to fetch cake data - invalid URL provided")
+                }
+                let (data, response) = try await URLSession.shared.data(for: URLRequest(url: url))
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    fatalError("Unable to fetch cake data - invalid response type")
+                }
+                guard (200..<299).contains(httpResponse.statusCode) else {
+                    fatalError("Non 200 error code")
+                }
+                let result = try JSONDecoder().decode([Cake].self, from: data)
             } catch {
                 print(error)
             }
