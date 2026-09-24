@@ -47,7 +47,12 @@ extension ContentView {
         }
         
         func load() async throws {
+            var cakeTitles = Set<String>()
             self.cakes = try await network.loadCakes()
+                .filter {
+                    cakeTitles.insert($0.title).inserted
+                }
+                .sorted(by: {$0.title < $1.title})
         }
     }
 }

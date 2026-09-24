@@ -15,7 +15,38 @@ struct CakeAppTests {
     }
     
     @MainActor
-    @Test func testCakeFiltering() async throws {
+    @Test func testCakeSorting() async throws {
+        let cakes = [
+            Cake(
+                title: "Unordered cake",
+                desc: "A description",
+                image: ""
+            ),
+            Cake(
+                title: "A duplicated cake",
+                desc: "Description for a cake",
+                image: "invalid-url"
+            ),
+            Cake(
+                title: "A duplicated cake",
+                desc: "Description for a duplicated cake",
+                image: "invalid-url"
+            ),
+            Cake(
+                title: "A cake",
+                desc: "This is a simple cake",
+                image: "invalid-url"
+            ),
+        ]
+        
+        let viewModel = ContentView.CakeViewModel(network: HttpStub(cakes: cakes))
+        try await viewModel.load()
+        let expectedCakes = [cakes[3], cakes[1], cakes[0]]
+        #expect(expectedCakes == viewModel.cakes)
+    }
+    
+    @MainActor
+    @Test func testCakeDeduping() async throws {
         let cakes = [
             Cake(
             title: "A duplicated cake",
@@ -34,7 +65,6 @@ struct CakeAppTests {
             ),
         ]
         let viewModel = ContentView.CakeViewModel(network: HttpStub(cakes: cakes))
-        
         try await viewModel.load()
         #expect([cakes[0], cakes[2]] == viewModel.cakes)
     }
