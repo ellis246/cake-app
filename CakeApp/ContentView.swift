@@ -8,12 +8,37 @@
 import SwiftUI
 
 struct ContentView: View {
+    
+    @State private var cakes = [Cake]()
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        ScrollView {
+            // Dedupe on title produces stable title id
+            ForEach(cakes, id: \.title) { cake in
+                VStack(alignment: .leading) {
+                    Text("\(cake.title)")
+                        .font(.title)
+                    AsyncImage(url: URL(string: cake.image)) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                        case .success(let image):
+                            image
+                                .resizable()
+                        case .failure(let error):
+                            let _ = print(error)
+                            //TODO: Enhance the UX with a dedicated error view
+                            Text("Failed to load image")
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                
+            }
         }
         .padding()
         .task {
@@ -28,7 +53,7 @@ struct ContentView: View {
                 guard (200..<299).contains(httpResponse.statusCode) else {
                     fatalError("Non 200 error code")
                 }
-                let result = try JSONDecoder().decode([Cake].self, from: data)
+                self.cakes = try JSONDecoder().decode([Cake].self, from: data)
             } catch {
                 print(error)
             }
