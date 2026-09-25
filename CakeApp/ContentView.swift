@@ -23,6 +23,7 @@ struct Network: NetworkLayer {
             throw NetworkError.general(reason: "Invalid URL provided")
         }
         var request = URLRequest(url: url)
+        request.timeoutInterval = 3
         request.cachePolicy = .reloadIgnoringLocalCacheData
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -41,6 +42,7 @@ extension ContentView {
     class CakeViewModel {
         private(set) var cakes = [Cake]()
         private let network: NetworkLayer
+        var isError = false
         
         init(network: NetworkLayer = Network()) {
             self.network = network
@@ -53,6 +55,8 @@ extension ContentView {
                     cakeTitles.insert($0.title).inserted
                 }
                 .sorted(by: {$0.title < $1.title})
+            self.isError = false
+            
         }
     }
 }
@@ -60,11 +64,37 @@ extension ContentView {
 struct ContentView: View {
     
     @State private var viewModel = CakeViewModel()
-    @State private var isError = false
+    //TODO: refactor so that not possible to have cakes and error state together (incl loading)
     @State private var selectedItem: Cake? = nil
     var body: some View {
-        if isError {
-            Text("A network error occurred. Please try again later.")
+            content
+            .refreshable {
+                do {
+                    try await viewModel.load()
+                } catch {
+                    print(error)
+                    viewModel.isError = true
+                }
+            }
+        
+        
+    }
+    
+    @ViewBuilder
+    private var content: some View {
+        if viewModel.isError {
+            List {
+                Text("A network error occurred. Please try again later.")
+            }
+            .refreshable {
+                do {
+                    try await viewModel.load()
+                } catch {
+                    print(error)
+                    viewModel.isError = true
+                }
+            }
+            
         } else {
             ScrollView {
                 // Dedupe on title produces stable title id
@@ -107,7 +137,7 @@ struct ContentView: View {
                     try await viewModel.load()
                 } catch {
                     print(error)
-                    isError = true
+                    viewModel.isError = true
                     
                 }
             }
@@ -116,8 +146,6 @@ struct ContentView: View {
                     .presentationDetents([.medium])
             }
         }
-        
-        
     }
 }
 
