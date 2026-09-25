@@ -67,7 +67,7 @@ struct ContentView: View {
         } else {
             ScrollView {
                 // Dedupe on title produces stable title id
-                ForEach(viewModel.cakes, id: \.title) { cake in
+                ForEach(viewModel.cakes.enumerated(), id: \.element.title) { (index, cake) in
                     VStack(alignment: .leading) {
                         Text("\(cake.title)")
                             .font(.title)
@@ -90,7 +90,10 @@ struct ContentView: View {
                         .frame(height: 200)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
-                    
+                    if index < viewModel.cakes.count-1 {
+                        Divider()
+                    }
+
                 }
             }
             .padding()
