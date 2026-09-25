@@ -18,7 +18,9 @@ in the log below rather than left undisclosed.
 The initial project setup and first commits (`85501dc` through `fc91306` — project scaffold,
 networking guard checks, rendering the cake list) were written by hand, without any AI
 involvement. Usage from this point onward is logged below as it happens, rather than
-disclosed only as a single blanket statement at submission time.
+disclosed only as a single blanket statement at submission time. Logging granularity: one row
+per distinct topic/question — follow-ups on the same topic update that row rather than adding
+a new one each time.
 
 **AI usage log:**
 
@@ -26,3 +28,5 @@ disclosed only as a single blanket statement at submission time.
 |------|------------------------|
 | 2026-09-24 | Drafted this AI usage disclosure document itself (not application code), using Claude Code, per my request and revised on my feedback. |
 | 2026-09-24 | Architecture/interpretation consulting: asked AI to identify which error conditions are required ("Must have") vs. nice-to-have in the exercise brief. No code written. |
+| 2026-09-25 | Architecture consulting: asked AI when to prefer `.popover` vs `.sheet` in SwiftUI, for the cake description popup requirement. No code written. |
+| 2026-09-25 | Architecture consulting: discussed downsides of adding a stored `UUID` to `Cake` for `Identifiable` conformance (for `sheet(item:)`) vs. a computed `id` derived from `title`. No code written. |

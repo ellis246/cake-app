@@ -61,6 +61,7 @@ struct ContentView: View {
     
     @State private var viewModel = CakeViewModel()
     @State private var isError = false
+    @State private var selectedItem: Cake? = nil
     var body: some View {
         if isError {
             Text("A network error occurred. Please try again later.")
@@ -71,29 +72,33 @@ struct ContentView: View {
                     VStack(alignment: .leading) {
                         Text("\(cake.title)")
                             .font(.title)
-                        AsyncImage(url: URL(string: cake.image)) { phase in
-                            switch phase {
-                            case .empty:
-                                ProgressView()
-                            case .success(let image):
-                                image
-                                    .resizable()
-                            case .failure(let error):
-                                let _ = print(error)
-                                //TODO: Enhance the UX with a dedicated error view
-                                Text("Failed to load image")
-                            @unknown default:
-                                EmptyView()
+                        Button {
+                            selectedItem = cake
+                        } label: {
+                            AsyncImage(url: URL(string: cake.image)) { phase in
+                                switch phase {
+                                case .empty:
+                                    ProgressView()
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                case .failure(let error):
+                                    let _ = print(error)
+                                    //TODO: Enhance the UX with a dedicated error view
+                                    Text("Failed to load image")
+                                @unknown default:
+                                    EmptyView()
+                                }
                             }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 200)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 200)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .buttonStyle(.plain)
                     }
                     if index < viewModel.cakes.count-1 {
                         Divider()
                     }
-
                 }
             }
             .padding()
@@ -106,7 +111,12 @@ struct ContentView: View {
                     
                 }
             }
+            .sheet(item: $selectedItem) { cake in
+                Text(cake.desc)
+                    .presentationDetents([.medium])
+            }
         }
+        
         
     }
 }
@@ -115,8 +125,12 @@ struct ContentView: View {
     ContentView()
 }
 
-struct Cake: Decodable {
+struct Cake: Decodable, Identifiable {
     let title: String
     let desc: String
     let image: String
+    
+    var id: String {
+        title
+    }
 }
