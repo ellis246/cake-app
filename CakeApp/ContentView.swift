@@ -23,7 +23,7 @@ struct Network: NetworkLayer {
             throw NetworkError.general(reason: "Invalid URL provided")
         }
         var request = URLRequest(url: url)
-        request.timeoutInterval = 3
+        request.timeoutInterval = 5
         request.cachePolicy = .reloadIgnoringLocalCacheData
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
