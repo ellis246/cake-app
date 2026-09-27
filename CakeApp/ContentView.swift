@@ -24,6 +24,7 @@ struct Network: NetworkLayer {
         }
         var request = URLRequest(url: url)
         request.timeoutInterval = 5
+        // Disabling cache so that error shown on reload, if network unavailable.
         request.cachePolicy = .reloadIgnoringLocalCacheData
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -48,14 +49,21 @@ extension ContentView {
             self.network = network
         }
         
-        func load() async throws {
-            var cakeTitles = Set<String>()
-            self.cakes = try await network.loadCakes()
-                .filter {
-                    cakeTitles.insert($0.title).inserted
-                }
-                .sorted(by: {$0.title < $1.title})
-            self.isError = false
+        func load() async {
+            do {
+                var cakeTitles = Set<String>()
+                let cakes = try await network.loadCakes()
+                    .filter {
+                        cakeTitles.insert($0.title).inserted
+                    }
+                    .sorted(by: {$0.title < $1.title})
+                self.isError = false
+                self.cakes = cakes
+            } catch {
+                print(error)
+                self.isError = true
+            }
+            
             
         }
     }
@@ -69,12 +77,7 @@ struct ContentView: View {
     var body: some View {
             content
             .refreshable {
-                do {
-                    try await viewModel.load()
-                } catch {
-                    print(error)
-                    viewModel.isError = true
-                }
+                await viewModel.load()
             }
         
         
@@ -82,21 +85,17 @@ struct ContentView: View {
     
     @ViewBuilder
     private var content: some View {
-        if viewModel.isError {
-            List {
-                Text("A network error occurred. Please try again later.")
-            }
-            .refreshable {
-                do {
-                    try await viewModel.load()
-                } catch {
-                    print(error)
-                    viewModel.isError = true
+        ScrollView {
+            if viewModel.isError {
+                VStack {
+                    Text("A network error occurred. Please try again later.")
+                    Button("Try again") {
+                        Task {
+                            await viewModel.load()
+                        }
+                    }
                 }
-            }
-            
-        } else {
-            ScrollView {
+            } else {
                 // Dedupe on title produces stable title id
                 ForEach(viewModel.cakes.enumerated(), id: \.element.title) { (index, cake) in
                     VStack(alignment: .leading) {
@@ -131,20 +130,14 @@ struct ContentView: View {
                     }
                 }
             }
-            .padding()
-            .task {
-                do {
-                    try await viewModel.load()
-                } catch {
-                    print(error)
-                    viewModel.isError = true
-                    
-                }
-            }
-            .sheet(item: $selectedItem) { cake in
-                Text(cake.desc)
-                    .presentationDetents([.medium])
-            }
+        }
+        .padding()
+        .task {
+            await viewModel.load()
+        }
+        .sheet(item: $selectedItem) { cake in
+            Text(cake.desc)
+                .presentationDetents([.medium])
         }
     }
 }
