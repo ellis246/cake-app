@@ -10,63 +10,72 @@ import Testing
 
 struct CakeAppTests {
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
-    }
-    
     @MainActor
-    @Test func testCakeSorting() async throws {
-        let cakes = [
-            Cake(
-                title: "Unordered cake",
-                desc: "A description",
-                image: ""
-            ),
-            Cake(
-                title: "A duplicated cake",
-                desc: "Description for a cake",
-                image: "invalid-url"
-            ),
-            Cake(
-                title: "A duplicated cake",
-                desc: "Description for a duplicated cake",
-                image: "invalid-url"
-            ),
-            Cake(
-                title: "A cake",
-                desc: "This is a simple cake",
-                image: "invalid-url"
-            ),
+    @Test(
+        arguments: [
+            (
+                [
+                    Cake(
+                        title: "A duplicated cake",
+                        desc: "Description for a cake",
+                        image: "invalid-url"
+                    ),
+                    Cake(
+                        title: "A duplicated cake",
+                        desc: "Description for a duplicated cake",
+                        image: "invalid-url"
+                    ),
+                    Cake(
+                        title: "A cake",
+                        desc: "This is a simple cake",
+                        image: "invalid-url"
+                    ),
+                ],
+                [
+                    Cake(
+                        title: "A cake",
+                        desc: "This is a simple cake",
+                        image: "invalid-url"
+                    ),
+                    Cake(
+                        title: "A duplicated cake",
+                        desc: "Description for a cake",
+                        image: "invalid-url"
+                    )
+                ]
+            )
         ]
+    )
+    func dedupeAndSorting(networkCakes: [Cake], expectedCakes: [Cake]) async throws {
         
-        let viewModel = ContentView.CakeViewModel(network: HttpStub(cakes: cakes))
-        try await viewModel.load()
-        let expectedCakes = [cakes[3], cakes[1], cakes[0]]
-        #expect(expectedCakes == viewModel.cakes)
+        let viewModel = ContentView.CakeViewModel(
+            network: HttpStub(
+                result: .success(networkCakes)
+            )
+        )
+        await viewModel.load()
+        guard case let .loaded(actualCakes) = viewModel.loadState else {
+            Issue.record("Expected load state to be .loaded")
+            return
+        }
+        #expect(expectedCakes == actualCakes)
     }
     
     @MainActor
-    @Test func testCakeDeduping() async throws {
-        let cakes = [
-            Cake(
-            title: "A duplicated cake",
-            desc: "Description for a cake",
-            image: "invalid-url"
-            ),
-            Cake(
-            title: "A duplicated cake",
-            desc: "Description for a duplicated cake",
-            image: "invalid-url"
-            ),
-            Cake(
-            title: "A cake",
-            desc: "This is a simple cake",
-            image: "invalid-url"
-            ),
-        ]
-        let viewModel = ContentView.CakeViewModel(network: HttpStub(cakes: cakes))
-        try await viewModel.load()
-        #expect([cakes[0], cakes[2]] == viewModel.cakes)
+    @Test
+    func failedToLoad() async throws {
+        let viewModel = ContentView.CakeViewModel(
+            network: HttpStub(
+                result: .failure(
+                    NetworkError.general(reason: "Unexpected error")
+                )
+            )
+        )
+        await viewModel.load()
+        guard case .error = viewModel.loadState else {
+            Issue.record("Expected error to be thrown")
+            return
+        }
     }
 
 }
@@ -80,10 +89,15 @@ extension Cake: @retroactive Equatable {
 
 struct HttpStub: NetworkLayer {
     
-    let cakes: [CakeApp.Cake]
+    let result: Result<[CakeApp.Cake], Error>
     
     func loadCakes() async throws -> [CakeApp.Cake] {
-        cakes
+        switch result {
+        case let .success(cakes):
+            cakes
+        case let .failure(error):
+            throw error
+        }
     }
     
     

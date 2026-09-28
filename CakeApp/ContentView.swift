@@ -41,9 +41,23 @@ extension ContentView {
     
     @Observable
     class CakeViewModel {
-        private(set) var cakes = [Cake]()
         private let network: NetworkLayer
-        var isError = false
+    
+        var loadState: LoadState = .loading
+        
+        enum LoadState {
+            case loading
+            case loaded([Cake])
+            case error
+            
+            var isLoaded: Bool {
+                if case .loaded = self {
+                    return true
+                } else {
+                    return false
+                }
+            }
+        }
         
         init(network: NetworkLayer = Network()) {
             self.network = network
@@ -51,20 +65,20 @@ extension ContentView {
         
         func load() async {
             do {
+                if !loadState.isLoaded {
+                    self.loadState = .loading
+                }
                 var cakeTitles = Set<String>()
                 let cakes = try await network.loadCakes()
                     .filter {
                         cakeTitles.insert($0.title).inserted
                     }
                     .sorted(by: {$0.title < $1.title})
-                self.isError = false
-                self.cakes = cakes
+                self.loadState = .loaded(cakes)
             } catch {
-                print(error)
-                self.isError = true
+                print("An error occured", error)
+                self.loadState = .error
             }
-            
-            
         }
     }
 }
@@ -72,64 +86,10 @@ extension ContentView {
 struct ContentView: View {
     
     @State private var viewModel = CakeViewModel()
-    //TODO: refactor so that not possible to have cakes and error state together (incl loading)
     @State private var selectedItem: Cake? = nil
     var body: some View {
-            content
-            .refreshable {
-                await viewModel.load()
-            }
-        
-        
-    }
-    
-    @ViewBuilder
-    private var content: some View {
         ScrollView {
-            if viewModel.isError {
-                VStack {
-                    Text("A network error occurred. Please try again later.")
-                    Button("Try again") {
-                        Task {
-                            await viewModel.load()
-                        }
-                    }
-                }
-            } else {
-                // Dedupe on title produces stable title id
-                ForEach(viewModel.cakes.enumerated(), id: \.element.title) { (index, cake) in
-                    VStack(alignment: .leading) {
-                        Text("\(cake.title)")
-                            .font(.title)
-                        Button {
-                            selectedItem = cake
-                        } label: {
-                            AsyncImage(url: URL(string: cake.image)) { phase in
-                                switch phase {
-                                case .empty:
-                                    ProgressView()
-                                case .success(let image):
-                                    image
-                                        .resizable()
-                                case .failure(let error):
-                                    let _ = print(error)
-                                    //TODO: Enhance the UX with a dedicated error view
-                                    Text("Failed to load image")
-                                @unknown default:
-                                    EmptyView()
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    if index < viewModel.cakes.count-1 {
-                        Divider()
-                    }
-                }
-            }
+            content
         }
         .padding()
         .task {
@@ -138,6 +98,62 @@ struct ContentView: View {
         .sheet(item: $selectedItem) { cake in
             Text(cake.desc)
                 .presentationDetents([.medium])
+        }
+        .refreshable {
+            await viewModel.load()
+        }
+    }
+    
+    @ViewBuilder
+    private var content: some View {
+        switch viewModel.loadState {
+        case .loading:
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .loaded(let cakes):
+            // Dedupe on title produces stable title id
+            ForEach(cakes.enumerated(), id: \.element.title) { (index, cake) in
+                Button {
+                    selectedItem = cake
+                } label: {
+                    VStack(alignment: .leading) {
+                        Text("\(cake.title)")
+                            .font(.title)
+                        AsyncImage(url: URL(string: cake.image)) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                            case .success(let image):
+                                image
+                                    .resizable()
+                            case .failure(let error):
+                                let _ = print("Image load failure: ", error)
+                                //TODO: Enhance the UX with a dedicated error view
+                                Text("Failed to load image")
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 200)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    
+                }
+                .buttonStyle(.plain)
+                if index < cakes.count-1 {
+                    Divider()
+                }
+            }
+        case .error:
+            VStack {
+                Text("A network error occurred. Please try again later.")
+                Button("Try again") {
+                    Task {
+                        await viewModel.load()
+                    }
+                }
+            }
         }
     }
 }
