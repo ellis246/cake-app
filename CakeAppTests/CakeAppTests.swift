@@ -30,11 +30,21 @@ struct CakeAppTests {
                         desc: "This is a simple cake",
                         image: "invalid-url"
                     ),
+                    Cake(
+                        title: "A Cake",
+                        desc: "This is an uppercase cake",
+                        image: "invalid-url"
+                    )
                 ],
                 [
                     Cake(
                         title: "A cake",
                         desc: "This is a simple cake",
+                        image: "invalid-url"
+                    ),
+                    Cake(
+                        title: "A Cake",
+                        desc: "This is an uppercase cake",
                         image: "invalid-url"
                     ),
                     Cake(
@@ -48,7 +58,7 @@ struct CakeAppTests {
     )
     func dedupeAndSorting(networkCakes: [Cake], expectedCakes: [Cake]) async throws {
         
-        let viewModel = ContentView.CakeViewModel(
+        let viewModel = CakeViewModel(
             network: HttpStub(
                 result: .success(networkCakes)
             )
@@ -64,7 +74,7 @@ struct CakeAppTests {
     @MainActor
     @Test
     func failedToLoad() async throws {
-        let viewModel = ContentView.CakeViewModel(
+        let viewModel = CakeViewModel(
             network: HttpStub(
                 result: .failure(
                     NetworkError.general(reason: "Unexpected error")
@@ -87,7 +97,7 @@ extension Cake: @retroactive Equatable {
     }
 }
 
-struct HttpStub: NetworkLayer {
+struct HttpStub: NetworkService {
     
     let result: Result<[CakeApp.Cake], Error>
     

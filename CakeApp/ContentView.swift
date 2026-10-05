@@ -7,167 +7,63 @@
 
 import SwiftUI
 
-enum NetworkError: Error {
-    case httpError(statusCode: Int)
-    case general(reason: String)
-}
-
-protocol NetworkLayer {
-    func loadCakes() async throws -> [Cake]
-}
-
-struct Network: NetworkLayer {
-    
-    func loadCakes() async throws -> [Cake] {
-        guard let url = URL(string: "https://raw.githubusercontent.com/Waracle/mobile-coding-test-api/refs/heads/main/cakes") else {
-            throw NetworkError.general(reason: "Invalid URL provided")
-        }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 5
-        // Disabling cache so that error shown on reload, if network unavailable.
-        request.cachePolicy = .reloadIgnoringLocalCacheData
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.general(reason: "Invalid response type")
-        }
-        guard (200..<299).contains(httpResponse.statusCode) else {
-            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
-        }
-        return try JSONDecoder().decode([Cake].self, from: data)
-    }
-}
-
-extension ContentView {
-    
-    @Observable
-    class CakeViewModel {
-        private let network: NetworkLayer
-    
-        var loadState: LoadState = .loading
-        
-        enum LoadState {
-            case loading
-            case loaded([Cake])
-            case error
-            
-            var isLoaded: Bool {
-                if case .loaded = self {
-                    return true
-                } else {
-                    return false
-                }
-            }
-        }
-        
-        init(network: NetworkLayer = Network()) {
-            self.network = network
-        }
-        
-        func load() async {
-            do {
-                if !loadState.isLoaded {
-                    self.loadState = .loading
-                }
-                var cakeTitles = Set<String>()
-                let cakes = try await network.loadCakes()
-                    .filter {
-                        cakeTitles.insert($0.title).inserted
-                    }
-                    .sorted(by: {$0.title < $1.title})
-                self.loadState = .loaded(cakes)
-            } catch {
-                print("An error occured", error)
-                self.loadState = .error
-            }
-        }
-    }
-}
-
 struct ContentView: View {
     
     @State private var viewModel = CakeViewModel()
     @State private var selectedItem: Cake? = nil
-    var body: some View {
-        ScrollView {
-            content
-        }
-        .padding()
-        .task {
-            await viewModel.load()
-        }
-        .sheet(item: $selectedItem) { cake in
-            Text(cake.desc)
-                .presentationDetents([.medium])
-        }
-        .refreshable {
-            await viewModel.load()
-        }
-    }
     
-    @ViewBuilder
-    private var content: some View {
-        switch viewModel.loadState {
-        case .loading:
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .loaded(let cakes):
-            // Dedupe on title produces stable title id
-            ForEach(cakes.enumerated(), id: \.element.title) { (index, cake) in
-                Button {
-                    selectedItem = cake
-                } label: {
-                    VStack(alignment: .leading) {
-                        Text("\(cake.title)")
-                            .font(.title)
-                        AsyncImage(url: URL(string: cake.image)) { phase in
-                            switch phase {
-                            case .empty:
-                                ProgressView()
-                            case .success(let image):
-                                image
-                                    .resizable()
-                            case .failure(let error):
-                                let _ = print("Image load failure: ", error)
-                                //TODO: Enhance the UX with a dedicated error view
-                                Text("Failed to load image")
-                            @unknown default:
-                                EmptyView()
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                switch viewModel.loadState {
+                case .loading:
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                case .loaded(let cakes):
+                    // Dedupe on title produces stable title id
+                    CakeRowsView(cakes: cakes) {
+                        selectedItem = $0
+                    }
+                case .error:
+                    VStack {
+                        // TODO: Surface specific error, improving UX but not oversharing sensitive data
+                        Text("Couldn't load cakes, please try again later.")
+                        Button("Try again") {
+                            Task {
+                                await viewModel.load()
                             }
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 200)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    
-                }
-                .buttonStyle(.plain)
-                if index < cakes.count-1 {
-                    Divider()
-                }
-            }
-        case .error:
-            VStack {
-                Text("A network error occurred. Please try again later.")
-                Button("Try again") {
-                    Task {
-                        await viewModel.load()
                     }
                 }
             }
+            .padding()
+            .task {
+                await viewModel.load()
+            }
+            .sheet(item: $selectedItem) { cake in
+                NavigationStack {
+                    Text(cake.desc)
+                        .padding()
+                        .presentationDetents([.medium])
+                        .navigationTitle(cake.title)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Close") {
+                                    selectedItem = nil
+                                }
+                            }
+                        }
+                }
+                
+            }
+            .refreshable {
+                await viewModel.load()
+            }
+            .navigationTitle("Cakes")
         }
     }
 }
 
 #Preview {
     ContentView()
-}
-
-struct Cake: Decodable, Identifiable {
-    let title: String
-    let desc: String
-    let image: String
-    
-    var id: String {
-        title
-    }
 }

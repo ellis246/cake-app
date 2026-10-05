@@ -1,0 +1,60 @@
+//
+//  CakeViewModel.swift
+//  CakeApp
+//
+//  Created by Adam Ellis on 29/09/2026.
+//
+
+import Foundation
+
+@Observable
+class CakeViewModel {
+    private let network: NetworkService
+
+    private(set) var loadState: LoadState = .loading
+    
+    enum LoadState {
+        case loading
+        case loaded([Cake])
+        case error(NetworkError)
+        
+        var isLoaded: Bool {
+            if case .loaded = self {
+                return true
+            } else {
+                return false
+            }
+        }
+    }
+    
+    init(network: NetworkService = Network()) {
+        self.network = network
+    }
+    
+    func load() async {
+        let previousState = loadState
+        do {
+            if !loadState.isLoaded {
+                self.loadState = .loading
+            }
+            var cakeTitles = Set<String>()
+            let cakes = try await network.loadCakes()
+                .filter {
+                    cakeTitles.insert($0.title).inserted
+                }
+                .sorted(by: {$0.title.caseInsensitiveCompare($1.title) == .orderedAscending })
+            self.loadState = .loaded(cakes)
+        // May have set .loading, cancellation isn't result, restore previous state
+        } catch is CancellationError {
+            self.loadState = previousState
+        } catch let error as NetworkError {
+            if !loadState.isLoaded {
+                self.loadState = .error(error)
+            }
+        } catch {
+            if !loadState.isLoaded {
+                self.loadState = .error(.general(reason: "Unknown"))
+            }
+        }
+    }
+}
