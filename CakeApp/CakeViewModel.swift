@@ -31,6 +31,7 @@ class CakeViewModel {
         self.network = network
     }
     
+    //TODO: maintain optional task as state, check task to ensure coalescing in-flight
     func load() async {
         let previousState = loadState
         do {
@@ -48,13 +49,16 @@ class CakeViewModel {
         } catch is CancellationError {
             self.loadState = previousState
         } catch let error as NetworkError {
-            if !loadState.isLoaded {
-                self.loadState = .error(error)
-            }
+            setError(error)
         } catch {
-            if !loadState.isLoaded {
-                self.loadState = .error(.general(reason: "Unknown"))
-            }
+            setError(.general(reason: "Unknown"))
         }
+    }
+    
+    private func setError(_ error: NetworkError) {
+        if !loadState.isLoaded {
+            self.loadState = .error(error)
+        }
+        //TODO: else surface an error message that the re-fetch failed
     }
 }
