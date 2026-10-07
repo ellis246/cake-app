@@ -1,3 +1,26 @@
+# CakeApp
+
+A SwiftUI app that loads a list of cakes from the Waracle API and shows them in a list, built
+for the Waracle Mobile Coding Exercise (`Waracle_Mobile_Coding_Exercise_1.pdf`).
+
+## Running the project
+
+**Requirements:** Xcode 26 or later (iOS 26.0 deployment target; iPhone and iPad). There are no
+third-party dependencies and no API keys, and the app needs an internet connection to load cakes.
+
+1. Clone the repository and open `CakeApp.xcodeproj` in Xcode.
+2. Select the `CakeApp` scheme and an iOS 26 simulator (or a device).
+3. Press ⌘R to build and run.
+
+**Unit tests:** press ⌘U, or from the command line:
+
+```sh
+xcodebuild test -project CakeApp.xcodeproj -scheme CakeApp \
+  -destination 'platform=iOS Simulator,name=<simulator name>' -only-testing:CakeAppTests
+```
+
+The unit tests use a stubbed network service, so they run offline.
+
 # AI usage disclosure
 
 Per the exercise's "Our stance on AI" section, AI usage on this project is disclosed here.
