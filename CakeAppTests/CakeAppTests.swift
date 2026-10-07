@@ -11,53 +11,49 @@ import Testing
 @MainActor
 struct CakeAppTests {
 
-    @Test(
-        arguments: [
-            (
-                [
-                    Cake(
-                        title: "A duplicated cake",
-                        desc: "Description for a cake",
-                        image: "invalid-url"
-                    ),
-                    Cake(
-                        title: "A duplicated cake",
-                        desc: "Description for a duplicated cake",
-                        image: "invalid-url"
-                    ),
-                    Cake(
-                        title: "A cake",
-                        desc: "This is a simple cake",
-                        image: "invalid-url"
-                    ),
-                    Cake(
-                        title: "A Cake",
-                        desc: "This is an uppercase cake",
-                        image: "invalid-url"
-                    )
-                ],
-                [
-                    Cake(
-                        title: "A cake",
-                        desc: "This is a simple cake",
-                        image: "invalid-url"
-                    ),
-                    Cake(
-                        title: "A Cake",
-                        desc: "This is an uppercase cake",
-                        image: "invalid-url"
-                    ),
-                    Cake(
-                        title: "A duplicated cake",
-                        desc: "Description for a cake",
-                        image: "invalid-url"
-                    )
-                ]
+    @Test
+    func dedupeAndSorting() async throws {
+        let networkCakes = [
+            Cake(
+                title: "A duplicated cake",
+                desc: "Description for a cake",
+                image: "invalid-url"
+            ),
+            Cake(
+                title: "A duplicated cake",
+                desc: "Description for a duplicated cake",
+                image: "invalid-url"
+            ),
+            Cake(
+                title: "A cake",
+                desc: "This is a simple cake",
+                image: "invalid-url"
+            ),
+            Cake(
+                title: "A Banana",
+                desc: "This is an uppercase cake",
+                image: "invalid-url"
             )
         ]
-    )
-    func dedupeAndSorting(networkCakes: [Cake], expectedCakes: [Cake]) async throws {
         
+        let expectedCakes = [
+            Cake(
+                title: "A Banana",
+                desc: "This is an uppercase cake",
+                image: "invalid-url"
+            ),
+            Cake(
+                title: "A cake",
+                desc: "This is a simple cake",
+                image: "invalid-url"
+            ),
+            Cake(
+                title: "A duplicated cake",
+                desc: "Description for a cake",
+                image: "invalid-url"
+            ),
+            
+        ]
         let viewModel = CakeViewModel(
             network: StubNetworkService(
                 result: .success(networkCakes)
@@ -96,7 +92,7 @@ struct CakeAppTests {
     }
     
     @Test
-    func failedToLoad() async throws {
+    func failedToLoad() async {
         let viewModel = CakeViewModel(
             network: StubNetworkService(
                 result: .failure(
@@ -109,7 +105,7 @@ struct CakeAppTests {
     }
     
     @Test
-    func cancellationReceived() async throws {
+    func cancellationReceivedResetsToLastState() async {
         let network = StubNetworkService(
             result: .failure(NetworkError.general(reason: "Error state"))
         )
@@ -122,6 +118,9 @@ struct CakeAppTests {
         await viewModel.load()
         #expect(viewModel.loadState == .error(NetworkError.general(reason: "Error state")))
     }
+    
+    //TODO: Failed refresh would also keep loaded data
+    //TODO: Test receiving network errors from e.g. decoding
 
 }
 

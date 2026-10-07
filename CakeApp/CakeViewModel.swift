@@ -41,6 +41,7 @@ class CakeViewModel {
             var cakeTitles = Set<String>()
             let cakes = try await network.loadCakes()
                 .filter {
+                    // Cakes are assumed to be duplicates on title only, any changes to description and imageURL are ignored, the first entry for a duplicate's values are used.
                     cakeTitles.insert($0.title).inserted
                 }
                 .sorted(by: {$0.title.caseInsensitiveCompare($1.title) == .orderedAscending })
