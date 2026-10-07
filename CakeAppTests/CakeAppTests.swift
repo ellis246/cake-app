@@ -8,9 +8,9 @@
 import Testing
 @testable import CakeApp
 
+@MainActor
 struct CakeAppTests {
 
-    @MainActor
     @Test(
         arguments: [
             (
@@ -59,7 +59,7 @@ struct CakeAppTests {
     func dedupeAndSorting(networkCakes: [Cake], expectedCakes: [Cake]) async throws {
         
         let viewModel = CakeViewModel(
-            network: HttpStub(
+            network: StubNetworkService(
                 result: .success(networkCakes)
             )
         )
@@ -71,35 +71,67 @@ struct CakeAppTests {
         #expect(expectedCakes == actualCakes)
     }
     
-    @MainActor
+    @Test
+    func sortingCaseInsensitive() async {
+        let networkCakes = [
+            Cake(
+                title: "Carrot",
+                desc: "",
+                image: ""
+            ),
+            Cake(
+                title: "banana",
+                desc: "",
+                image: ""
+            ),
+        ]
+        
+        let viewModel = CakeViewModel(
+            network: StubNetworkService(
+                result: .success(networkCakes)
+            )
+        )
+        await viewModel.load()
+        #expect(CakeViewModel.LoadState.loaded([networkCakes[1], networkCakes[0]]) == viewModel.loadState)
+    }
+    
     @Test
     func failedToLoad() async throws {
         let viewModel = CakeViewModel(
-            network: HttpStub(
+            network: StubNetworkService(
                 result: .failure(
                     NetworkError.general(reason: "Unexpected error")
                 )
             )
         )
         await viewModel.load()
-        guard case .error = viewModel.loadState else {
-            Issue.record("Expected error to be thrown")
-            return
-        }
+        #expect(viewModel.loadState == .error(.general(reason: "Unexpected error")))
     }
-
-}
-extension Cake: @retroactive Equatable {
-    public static func == (lhs: Cake, rhs: Cake) -> Bool {
-        lhs.title == rhs.title
-        && lhs.desc == rhs.desc
-        && lhs.image == rhs.image
-    }
-}
-
-struct HttpStub: NetworkService {
     
-    let result: Result<[CakeApp.Cake], Error>
+    @Test
+    func cancellationReceived() async throws {
+        let network = StubNetworkService(
+            result: .failure(NetworkError.general(reason: "Error state"))
+        )
+        let viewModel = CakeViewModel(
+            network: network
+        )
+        await viewModel.load()
+        #expect(viewModel.loadState == .error(NetworkError.general(reason: "Error state")))
+        network.result = .failure(CancellationError())
+        await viewModel.load()
+        #expect(viewModel.loadState == .error(NetworkError.general(reason: "Error state")))
+    }
+
+}
+
+final class StubNetworkService: NetworkService {
+    
+    init(result: Result<[CakeApp.Cake], Error>) {
+        self.result = result
+    }
+    
+    var result: Result<[CakeApp.Cake], Error>
     
     func loadCakes() async throws -> [CakeApp.Cake] {
         switch result {
@@ -109,7 +141,4 @@ struct HttpStub: NetworkService {
             throw error
         }
     }
-    
-    
-    
 }

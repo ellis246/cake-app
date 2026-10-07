@@ -13,7 +13,7 @@ class CakeViewModel {
 
     private(set) var loadState: LoadState = .loading
     
-    enum LoadState {
+    enum LoadState: Equatable {
         case loading
         case loaded([Cake])
         case error(NetworkError)

@@ -6,7 +6,7 @@
 //
 import Foundation
 
-enum NetworkError: Error {
+enum NetworkError: Error, Equatable {
     case httpError(statusCode: Int)
     case general(reason: String)
     case offline
@@ -56,11 +56,5 @@ struct Network: NetworkService {
         } catch {
             throw NetworkError.general(reason: error.localizedDescription)
         }
-//        } catch let error as NetworkError {
-//            throw error
-//        } catch let error as URLError {
-////            switch error.code {
-////            case .notConnectedToInternet, .networkConnectionLost: .offline
-////            }
     }
 }
