@@ -9,6 +9,9 @@ skills. AI (Claude Code, Anthropic) is used only in these ways:
   potential bugs or performance issues.
 - **Architecture consultant** — discussing architecture/design decisions and interpretations
   of the exercise brief with AI, as a sounding board, without it writing the implementation.
+- **Audit log maintenance** — AI writes and maintains the AI usage log in this README from
+  its own record of each session. This is documentation only, and the README is the only
+  file in the repo AI edits. I review the entries.
 
 **Enforcement:** if I ask the AI something that falls outside those two categories (e.g. ask
 it to write or edit application code), it is instructed to question it and decline by
@@ -30,3 +33,5 @@ a new one each time.
 | 2026-09-24 | Architecture/interpretation consulting: asked AI to identify which error conditions are required ("Must have") vs. nice-to-have in the exercise brief. No code written. |
 | 2026-09-25 | Architecture consulting: asked AI when to prefer `.popover` vs `.sheet` in SwiftUI, for the cake description popup requirement. No code written. |
 | 2026-09-25 | Architecture consulting: discussed downsides of adding a stored `UUID` to `Cake` for `Identifiable` conformance (for `sheet(item:)`) vs. a computed `id` derived from `title`. No code written. |
+| 2026-09-29, 2026-10-05 | Code review, on request: a full audit of the submission against the exercise brief. On 09-29 AI read all the sources and the git history, built and ran the unit tests, and checked the live API. Findings included image distortion, the `200..<299` status range, cancellation shown as an error, the sort comparator, test coverage gaps and missing TODOs. On 10-05 AI re-read the sources after those fixes (no build or test run; the brief PDF could not be rendered) and reported remaining points: silent refresh failures, untested network layer, dead commented code in `Network.swift`, sheet description not scrollable, and a retroactive `Equatable` in tests. No code written by AI. |
+| 2026-10-06 | Architecture consulting: handling concurrent `load()` calls and silent failed refreshes. Discussed coalescing in-flight work by keeping the `Task` and awaiting it versus a boolean guard or cancel-and-restart, the interaction with cancellation handling, and how to test it. AI reviewed the resulting TODOs in `CakeViewModel.swift` by reading the code, building and running the tests. No application code written by AI. |
